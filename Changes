@@ -1,0 +1,11 @@
+Changes file for Test::Differences
+
+0.3 Sat Dec 15 02:06:26 EST 2001
+    - Only use Data::Dumper on both args or neither arg.
+    - Improve escaping (Michael G Schwern <schwern@pobox.com>,
+    - remove leftover debugging code (Tatsuhiko Miyagawa <miyagawa@edge.co.jp>)
+    - add t/00escape.t
+    - PREREQ_PM => 'Text::Diff' (Michael G Schwern <schwern@pobox.com>)
+
+0.2
+    - Initial public release

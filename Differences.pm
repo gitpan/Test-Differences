@@ -1,4 +1,4 @@
-package Test::Differences ;
+package Test::Differences;
 
 =head1 NAME
 
@@ -6,24 +6,24 @@ Test::Differences - Test strings and data structures and show differences if not
 
 =head1 SYNOPSIS
 
-   use Test ;    ## Or use Test::More
-   use Test::Differences ;
+   use Test;    ## Or use Test::More
+   use Test::Differences;
 
-   eq_or_diff $got,  "a\nb\nc\n",   "testing strings" ;
-   eq_or_diff \@got, [qw( a b c )], "testing arrays" ;
+   eq_or_diff $got,  "a\nb\nc\n",   "testing strings";
+   eq_or_diff \@got, [qw( a b c )], "testing arrays";
 
    ## Using with DBI-like data structures
 
-   use DBI ;
+   use DBI;
 
    ... open connection & prepare statement and @expected_... here...
    
-   eq_or_diff $sth->fetchall_arrayref, \@expected_arrays  "testing DBI arrays" ;
-   eq_or_diff $sth->fetchall_hashref,  \@expected_hashes, "testing DBI hashes" ;
+   eq_or_diff $sth->fetchall_arrayref, \@expected_arrays  "testing DBI arrays";
+   eq_or_diff $sth->fetchall_hashref,  \@expected_hashes, "testing DBI hashes";
 
    ## To force textual or data line numbering (text lines are numbered 1..):
-   eq_or_diff_text ... ;
-   eq_or_diff_data ... ;
+   eq_or_diff_text ...;
+   eq_or_diff_data ...;
 
 =head1 DESCRIPTION
 
@@ -70,9 +70,9 @@ tests were talking about here, not hand-set epic poems.
 C<eq_or_diff()> starts counting records at 0 unless you pass it two text
 strings:
 
-   eq_or_diff $a, $b ;   ## First line is line number 1
-   eq_or_diff @a, @b ;   ## First element is element 0
-   eq_or_diff $a, @b ;   ## First line/element is element 0
+   eq_or_diff $a, $b;   ## First line is line number 1
+   eq_or_diff @a, @b;   ## First element is element 0
+   eq_or_diff $a, @b;   ## First line/element is element 0
 
 If you want to force a first record number of 0, use C<eq_or_diff_data>.  If
 you want to force a first record number of 1, use C<eq_or_diff_text>.  I chose
@@ -93,159 +93,154 @@ to some problems on older perls.
 
 Exports all 3 functions by default (and by design).  Use
 
-    use Test::Differences () ;
+    use Test::Differences ();
 
 to suppress this behavior if you don't like the namespace pollution.
 
 =cut
 
-$VERSION = 0.2 ;
+$VERSION = 0.3;
 
-use Exporter ;
+use Exporter;
 
-@ISA = qw( Exporter ) ;
+@ISA = qw( Exporter );
 @EXPORT = qw( eq_or_diff eq_or_diff_text eq_or_diff_data );
 
-use strict ;
+use strict;
 
-use Text::Diff ;
-use Data::Dumper ;
+use Carp;
+use Text::Diff;
 
 sub _isnt_ARRAY_of_scalars {
-    return 1 if ref ne "ARRAY" ;
-    return scalar grep ref, @$_ ;
+    return 1 if ref ne "ARRAY";
+    return scalar grep ref, @$_;
 }
 
 
 sub _isnt_HASH_of_scalars {
-    return 1 if ref ne "HASH" ;
-    return scalar grep ref, keys %$_ ;
+    return 1 if ref ne "HASH";
+    return scalar grep ref, keys %$_;
 }
 
-use constant ARRAY_of_scalars => "ARRAY of scalars" ;
-use constant ARRAY_of_ARRAYs_of_scalars => "ARRAY of ARRAYs of scalars" ;
-use constant ARRAY_of_HASHes_of_scalars => "ARRAY of HASHes of scalars" ;
+use constant ARRAY_of_scalars => "ARRAY of scalars";
+use constant ARRAY_of_ARRAYs_of_scalars => "ARRAY of ARRAYs of scalars";
+use constant ARRAY_of_HASHes_of_scalars => "ARRAY of HASHes of scalars";
 
 
 sub _grok_type {
+    local $_ = shift if @_;
+    return "SCALAR" unless ref ;
     if ( ref eq "ARRAY" ) {
-        return undef unless @$_ ;
+        return undef unless @$_;
         return ARRAY_of_scalars unless 
-            _isnt_ARRAY_of_scalars ;
+            _isnt_ARRAY_of_scalars;
         return ARRAY_of_ARRAYs_of_scalars 
-            unless grep _isnt_ARRAY_of_scalars, @$_ ;
+            unless grep _isnt_ARRAY_of_scalars, @$_;
         return ARRAY_of_HASHes_of_scalars
-            unless grep _isnt_HASH_of_scalars, @$_ ;
-        return "unknown" ;
+            unless grep _isnt_HASH_of_scalars, @$_;
+        return "unknown";
     }
 }
 
 
-sub _decontrol {
-    $_ =~ s/\n/\\n/g ;
-    $_ =~ s/\r/\\r/g ;
-    $_ =~ s/\t/\\t/g ;
-    $_ =~ s{
-            ([^[:print:]])
-        }{
-            my $codepoint = ord $1 ;
-            $codepoint <= 0xFF
-                ? sprintf "\0x%02x", $codepoint
-                : sprintf "\0x{%04x}", $codepoint
+my %escapes = map {
+    ( eval qq{"$_"} => $_ )
+} (
+    map( sprintf( "\\x%02x", $_ ), ( 0, 27..31, 128..255 ) ),
+    ("\\cA".."\\cZ"),
+    "\\t", "\\n", "\\r", "\\f", "\\b", "\\a", "\\e"
+) ;
 
-        }ge ;
+sub _escape($) {
+    my $s = shift ;
+    $s =~ s{([^\040-\177])}{
+	exists $escapes{$1}
+	    ? $escapes{$1}
+	    : sprintf( "\\x{%04x}", ord $1 ) ;
+    }ge;
 
-    $_ ;
+    $s;
 }
 
 
 ## Flatten any acceptable data structure in to an array of lines.
 sub _flatten {
-    local $_ = shift if @_ ;
+    my $type = shift;
+    local $_ = shift if @_;
 
-    return [ map _decontrol, split /^/m ] unless ref ;
+    return [ map _escape $_, split /^/m ] unless ref;
 
-    my $type = _grok_type ;
-
-    if ( ! $type ) {
-        local $Data::Dumper::Indent    = 1 ;
-        local $Data::Dumper::SortKeys  = 1 ;
-        local $Data::Dumper::Purity    = 0 ;
-        local $Data::Dumper::Terse     = 1 ;
-        local $Data::Dumper::DeepCopy  = 1 ;
-        local $Data::Dumper::QuoteKeys = 0 ;
-        return [ map { chomp ; _decontrol } split /^/, Dumper $_ ] ;
-    }
+    croak "Can't flatten $_" unless $type ;
 
     ## Copy the top level array so we don't trash the originals
-    my @recs = @$_ ;
+    my @recs = @$_;
 
     if ( $type eq ARRAY_of_ARRAYs_of_scalars ) {
         ## Also copy the inner arrays if need be
-        $_ = [ @$_ ] for @recs ;
+        $_ = [ @$_ ] for @recs;
     }
 
 
     if ( $type eq ARRAY_of_HASHes_of_scalars ) {
-        my %headings ;
+        my %headings;
         for my $rec ( @recs ) {
-            $headings{$_} = 1 for keys %$rec ;
+            $headings{$_} = 1 for keys %$rec;
         }
-        my @headings = sort keys %headings ;
+        my @headings = sort keys %headings;
 
         ## Convert all hashes in to arrays.
         for my $rec ( @recs ) {
             $rec = [ map $rec->{$_}, @headings ],
         }
 
-        unshift @recs, \@headings ;
+        unshift @recs, \@headings;
 
-        $type = ARRAY_of_ARRAYs_of_scalars ;
+        $type = ARRAY_of_ARRAYs_of_scalars;
     }
 
     if ( $type eq ARRAY_of_ARRAYs_of_scalars ) {
         ## Convert undefs
         for my $rec ( @recs ) {
             for ( @$rec ) {
-                $_ = "<undef>" unless defined ;
+                $_ = "<undef>" unless defined;
             }
         }
         
         ## Get widths of each column.
-        my @widths ;
-        my @ljusts  ;
+        my @widths;
+        my @ljusts;
         ## TODO: count decimal places for floats
         for my $rec ( @recs ) {
             for my $i ( 0..$#$rec ) {
                 for ( $rec->[$i] ) {
                     $widths[$i] = length
                         if ! defined $widths[$i]
-                        || length > $widths[$i] ;
+                        || length > $widths[$i];
                     $ljusts[$i] = 1
-                        unless /^\d+/ ;
-                    _decontrol ;
+                        unless /^\d+/;
+                    _escape $_;
                 }
             }
         }
 
-        my @fmts ;
+        my @fmts;
         for my $i ( 0..$#widths ) {
             push @fmts, join "",
                 "%",
                 $ljusts[$i] ? "-" : "",
                 $widths[$i],
-                "s" ;
+                "s";
         }
 
         for my $rec ( @recs ) {
             for my $i ( 0..$#$rec ) {
-                $rec->[$i] = sprintf $fmts[$i], $rec->[$i] ;
+                $rec->[$i] = sprintf $fmts[$i], $rec->[$i];
             }
-            $rec = join ",", @$rec ;
+            $rec = join ",", @$rec;
         }
     }
 
-    return \@recs ;
+    return \@recs;
 }
 
 
@@ -273,33 +268,58 @@ sub eq_or_diff_text { $_[3] = { data_type => "text" }; goto &eq_or_diff; }
 sub eq_or_diff_data { $_[3] = { data_type => "data" }; goto &eq_or_diff; }
 
 sub eq_or_diff {
-    my ( @vals, $name, $options ) ;
-    ( $vals[0], $vals[1], $name, $options ) = @_ ;
+    my ( @vals, $name, $options );
+    ( $vals[0], $vals[1], $name, $options ) = @_;
 
-    my $data_type ;
-    $data_type = $options->{data_type} if $options ;
-    $data_type ||= "text" unless ref $vals[0] || ref $vals[1] ;
-    $data_type ||= "data" ;
+    my $data_type;
+    $data_type = $options->{data_type} if $options;
+    $data_type ||= "text" unless ref $vals[0] || ref $vals[1];
+    $data_type ||= "data";
 
-    my @widths ;
+    my @widths;
 
-    @vals = map _flatten, @_[0,1] ;
-    my $caller = caller ;
+    my @types = map _grok_type, @_[0,1];
+
+    if ( !$types[0] && !$types[1] ) {
+	require Data::Dumper;
+	local $Data::Dumper::Indent    = 1;
+	local $Data::Dumper::SortKeys  = 1;
+	local $Data::Dumper::Purity    = 0;
+	local $Data::Dumper::Terse     = 1;
+	local $Data::Dumper::DeepCopy  = 1;
+	local $Data::Dumper::QuoteKeys = 0;
+        @vals = map {
+	    return [
+	        map {
+		    chomp;
+		    _escape $_;
+		} split /^/, Data::Dumper::Dumper( $_ )
+	    ] ;
+	} @vals;
+    }
+    else {
+	@vals = (
+	    _flatten( $types[0], $vals[0] ),
+	    _flatten( $types[1], $vals[1] )
+	);
+    }
+
+    my $caller = caller;
 
     my $passed = join( "", @{$vals[0]} ) eq join( "URK", @{$vals[1]} );
 
     my $diff;
     unless ( $passed ) {
-        my $context = grep( @$_ > 25, @vals ) ? 3 : 25 ;
+        my $context = grep( @$_ > 25, @vals ) ? 3 : 25;
         $diff = diff @vals, {
             CONTEXT => $context,
             STYLE   => Test::Differences::SideBySide->new(
                 LOCATORS => $context < 25,
                 OFFSET   => $data_type eq "text" ? 1 : 0,
             ),
-        } ;
-        chomp $diff ;
-        $diff .= "\n" ;
+        };
+        chomp $diff;
+        $diff .= "\n";
     }
 
     my $which = _id_callers_test_package_of_choice;
@@ -311,96 +331,94 @@ sub eq_or_diff {
         goto &Test::ok;
     }
     elsif ( $which eq "Test::Builder" ) {
-        my $test = Test::Builder->new ;
+        my $test = Test::Builder->new;
         ## TODO: Call exported_to here?  May not need to because the caller
         ## should have imported something based on Test::Builder already.
-        $test->ok( $passed, $name ) ;
-        $test->diag( $diff ) unless $passed ;
+        $test->ok( $passed, $name );
+        $test->diag( $diff ) unless $passed;
     }
     else {
         unless ( $warned_of_unknown_test_lib ) {
             Carp::cluck
-                "Can't identify test lib in use, doesn't seem to be Test.pm or Test::Builder based\n" ;
-            $warned_of_unknown_test_lib = 1 ;
+                "Can't identify test lib in use, doesn't seem to be Test.pm or Test::Builder based\n";
+            $warned_of_unknown_test_lib = 1;
         }
         ## Play dumb and hope nobody notices the fool drooling in the corner
         if ( $passed ) {
-            print "ok\n" ;
+            print "ok\n";
         }
         else {
-            $diff =~ s/^/# /gm ;
-            print "not ok\n", $diff ;
+            $diff =~ s/^/# /gm;
+            print "not ok\n", $diff;
         }
     }
 }
 
 
-package Test::Differences::SideBySide ;
+package Test::Differences::SideBySide;
 
-use vars qw( @ISA ) ;
+use vars qw( @ISA );
 
-@ISA = qw( Text::Diff::Base ) ;
+@ISA = qw( Text::Diff::Base );
 
 sub new {
-    my $proto = shift ;
+    my $proto = shift;
     return bless { @_ }, $proto
 }
 
 ## Old Text::Diffs doesn't export this
-sub OPCODE() ;
-*OPCODE = \&Text::Diff::OPCODE ;
+sub OPCODE();
+*OPCODE = \&Text::Diff::OPCODE;
 
 sub hunk {
-    my $self = shift ;
-    pop ; # Ignore options
-    my $ops = pop ;  ## Leave sequences in @_[0,1]
-
-use Data::Dumper ; print Dumper $self ;
+    my $self = shift;
+    pop; # Ignore options
+    my $ops = pop;  ## Leave sequences in @_[0,1]
 
     ## Line numbers are one off, gotta bump them
     push @{$self->{LINES}}, [
         map( $_ + $self->{OFFSET}, @{$ops->[0]}[0,1]), "@"
-    ] ;
+    ];
 
-    my ( @A, @B ) ;
+    my ( @A, @B );
     for ( @$ops ) {
-        my $opcode = $_->[OPCODE] ;
+        my $opcode = $_->[OPCODE];
         if ( $opcode eq " " ) {
-            push @A, undef while @A < @B ;
-            push @B, undef while @B < @A ;
+            push @A, undef while @A < @B;
+            push @B, undef while @B < @A;
         }
         if ( $opcode eq " " || $opcode eq "-" ) {
-            push @A, $_[0]->[$_->[0]] ;
+            push @A, $_[0]->[$_->[0]];
         }
         if ( $opcode eq " " || $opcode eq "+" ) {
-            push @B, $_[1]->[$_->[1]] ;
+            push @B, $_[1]->[$_->[1]];
         }
     }
 
-    push @A, "" while @A < @B ;
-    push @B, "" while @B < @A ;
+    push @A, "" while @A < @B;
+    push @B, "" while @B < @A;
     for ( 0..$#A ) {
-        my ( $A, $B ) = (shift @A, shift @B ) ;
+        my ( $A, $B ) = (shift @A, shift @B );
         push @{$self->{LINES}},
             [ $A, $B, 
                 ! defined $A ? "-" :
                 ! defined $B ? "+" :
                 $A eq $B ? " " : "X"
-            ] ;
+            ];
     }
 }
 
 
 sub file_footer {
-    my $self = shift ;
+    my $self = shift;
 
-    my $a_width = length "Got" ;
-    my $b_width = length "Expected" ;
+    my $a_width = length "Got";
+    my $b_width = length "Expected";
     for ( @{$self->{LINES}} ) {
         $a_width = length $_->[0]
-            if defined $_->[0] && length $_->[0] > $a_width ;
+            if defined $_->[0] && length $_->[0] > $a_width;
         $b_width = length $_->[1]
-            if defined $_->[1] && length $_->[1] > $b_width ;
+            if defined $_->[1] && length $_->[1] > $b_width;
     }
 
     my %fmts = (
@@ -409,14 +427,14 @@ sub file_footer {
         "X" => "> %-${a_width}s * %-${b_width}s <\n",
         "-" => "> %-${a_width}s *" . ( "x" x ( $b_width + 2 ) ) . "<\n",
         "+" => ">" . ( "x" x ( $a_width + 2 ) ) . "* %-${b_width}s <\n",
-    ) ;
+    );
 
     my $bar     = join "",
         "+",
         ( "-" x  ( $a_width + 2 ) ),
         "+",
         ( "-" x  ( $b_width + 2 ) ),
-        "+\n" ;
+        "+\n";
 
     return join( "",
         $bar,
@@ -428,7 +446,7 @@ sub file_footer {
             @{$self->{LINES}}
         ),
         $bar
-    ) ;
+    );
 }
 
 =head1 AUTHOR
@@ -445,4 +463,4 @@ version, or the Artistic license.
 =cut
 
 
-1 ;
+1;

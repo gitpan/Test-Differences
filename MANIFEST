@@ -1,6 +1,9 @@
+Changes
 Differences.pm
 MANIFEST
+MANIFEST.SKIP
 Makefile.PL
+t/00escape.t
 t/00flatten.t
 t/01text_vs_data.t
 t/10test.t

@@ -2,8 +2,10 @@ use ExtUtils::MakeMaker;
 
 WriteMakefile(
     NAME          => "Test::Differences",
-#    PMLIBDIRS    => [ 'Run' ],
     VERSION_FROM  => "Differences.pm",
+    PREREQ_PM     => {
+        "Text::Diff" => 0.11,
+    },
 );
 
 
