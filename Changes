@@ -1,5 +1,8 @@
 Changes file for Test::Differences
 
+0.46 Tue Aug 27 13:45:51 EDT 2002
+    - Minor doc tweaks
+
 0.45 Sun Jul 14 06:58:48 EDT 2002
     - Fix $Data::Dumper::FooBar to be ...::Foobar, patch by
       Ilya Martynov <ilya@martynov.org>

@@ -27,10 +27,11 @@ Test::Differences - Test strings and data structures and show differences if not
 
 =head1 DESCRIPTION
 
-When the code you're testing returns multiple lines or records and they're just
-plain wrong, sometimes an equivalent to the Unix C<diff> utility is just what's
-needed.  Here's output from an example test script that checks two text
-documents and then two (trivial) data structures:
+When the code you're testing returns multiple lines, records or data
+structures and they're just plain wrong, an equivalent to the Unix
+C<diff> utility may be just what's needed.  Here's output from an
+example test script that checks two text documents and then two
+(trivial) data structures:
 
  t/99example....1..3
  not ok 1 - differences in text
@@ -62,28 +63,30 @@ documents and then two (trivial) data structures:
  #     +----+-------------------------------------+----------------------------+
  # Looks like you failed 3 tests of 3.
 
-eq_or_diff_...() compares two strings or (limited) data structures and either
-emits an ok indication or a side-by-side diff.  Test::Differences is designed
-to be used with Test.pm and with Test::Simple, Test::More, and other
-Test::Builder based testing modules.  As the SYNOPSIS shows, another testing
-module must be used as the basis for your test suite.
+eq_or_diff_...() compares two strings or (limited) data structures and
+either emits an ok indication or a side-by-side diff.  Test::Differences
+is designed to be used with Test.pm and with Test::Simple, Test::More,
+and other Test::Builder based testing modules.  As the SYNOPSIS shows,
+another testing module must be used as the basis for your test suite.
 
-These functions assume that you are presenting it with "flat" records, looking
-like:
+These functions assume that you are presenting it with "flat" records,
+looking like:
 
    - scalars composed of record-per-line
    - arrays of scalars,
    - arrays of arrays of scalars,
    - arrays of hashes containing only scalars
 
-All of these are flattened in to single strings which are then compared for
-differences.  Differently data structures can be compared, as long as they
-flatten identically.
+All of these are flattened in to single strings which are then compared
+for differences.  Differently data structures can be compared, as long
+as they flatten identically.
 
-All other data structures are run through Data::Dumper first.  This is a bit
-dangerous, as some version of perl shipped with Data::Dumpers that could do the
-oddest things with some input.  This will be changed to an internal dumper with
-good backward compatability when this bites somebody or I get some free time.
+All other data structures are run through Data::Dumper first.  This is a
+bit dangerous, as some versions of perl shipped with Data::Dumpers that
+could do the oddest things with unexpected, like core dump.  Only as of
+5.8.0 does Data::Dumper sort hash keys, which is necessary for HASH
+dumps to be fully predictable.  This will be changed when this bites
+somebody or I get some free time.
 
 C<eq_or_diff()> starts counting records at 0 unless you pass it two text
 strings:
@@ -183,7 +186,7 @@ level of automation.
 
 =cut
 
-$VERSION = 0.45;
+$VERSION = 0.46;
 
 use Exporter;
 
