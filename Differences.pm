@@ -106,25 +106,27 @@ labor by you or your users.
 
 =item *
 
-eval "use Differences";
+eval "use Test::Differences";
 
 This is the easiest option.
 
 If you want to detect the presence of Test::Differences on the fly, something
 like the following code might do the trick for you:
 
-    use Test;
+    use Test qw( !ok );   ## get all syms *except* ok
 
     eval "use Test::Differences";
+    use Data::Dumper;
 
-    sub my_ok {
-        goto &eq_or_diff if defined &eq_or_diff;
-        goto &ok;
+    sub ok {
+        goto &eq_or_diff if defined &eq_or_diff && @_ > 1;
+        @_ = map ref $_ ? Dumper( @_ ) : $_, @_;
+        goto Test::&ok;
     }
 
     plan tests => 1;
 
-    my_ok "a", "b";
+    ok "a", "b";
 
 =item *
 
@@ -181,7 +183,7 @@ level of automation.
 
 =cut
 
-$VERSION = 0.44;
+$VERSION = 0.45;
 
 use Exporter;
 
@@ -322,11 +324,11 @@ sub eq_or_diff {
     if ( $dump_it ) {
 	require Data::Dumper;
 	local $Data::Dumper::Indent    = 1;
-	local $Data::Dumper::SortKeys  = 1;
+	local $Data::Dumper::Sortkeys  = 1;
 	local $Data::Dumper::Purity    = 0;
 	local $Data::Dumper::Terse     = 1;
-	local $Data::Dumper::DeepCopy  = 1;
-	local $Data::Dumper::QuoteKeys = 0;
+	local $Data::Dumper::Deepcopy  = 1;
+	local $Data::Dumper::Quotekeys = 0;
         @vals = map 
 	    [ split /^/, Data::Dumper::Dumper( $_ ) ],
 	    @vals;

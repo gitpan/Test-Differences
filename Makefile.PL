@@ -4,7 +4,7 @@ WriteMakefile(
     NAME          => "Test::Differences",
     VERSION_FROM  => "Differences.pm",
     PREREQ_PM     => {
-        "Text::Diff" => 0.3,
+        "Text::Diff" => 0.34,
     },
 );
 

@@ -1,5 +1,11 @@
 Changes file for Test::Differences
 
+0.45 Sun Jul 14 06:58:48 EDT 2002
+    - Fix $Data::Dumper::FooBar to be ...::Foobar, patch by
+      Ilya Martynov <ilya@martynov.org>
+    - Correct the "use Test::Differences" example.
+    - Require Text::Diff 0.34 in to get escaping fixes.
+
 0.44 Mon Jul  8 17:02:11 EDT 2002
     - Document Data::Dumper shortcomings reported by Yves Orton
     <demerphq@hotmail.com> and Ilya Martynov <ilya@martynov.org>.
