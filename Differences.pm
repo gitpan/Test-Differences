@@ -12,6 +12,9 @@ Test::Differences - Test strings and data structures and show differences if not
    eq_or_diff $got,  "a\nb\nc\n",   "testing strings";
    eq_or_diff \@got, [qw( a b c )], "testing arrays";
 
+   ## Passing options:
+   eq_or_diff $got, $expected, $name, { context => 300 };  ## options
+
    ## Using with DBI-like data structures
 
    use DBI;
@@ -100,6 +103,17 @@ you want to force a first record number of 1, use C<eq_or_diff_text>.  I chose
 this over passing in an options hash because it's clearer and simpler this way.
 YMMV.
 
+=head1 OPTIONS
+
+There is currently only one option: "context".  This allows you to
+control the amount of context shown:
+
+   eq_or_diff $got, $expected, $name, { context => 50000};
+
+will show you lots and lots of context.  Normally, eq_or_diff() uses
+some heuristics to determine whether to show 3 lines of context (like
+a normal unified diff) or 25 lines (for 
+
 =head1 Deploying Test::Differences
 
 There are three basic ways of deploying Test::Differences requiring more or less
@@ -186,7 +200,7 @@ level of automation.
 
 =cut
 
-$VERSION = 0.46;
+$VERSION = 0.47;
 
 use Exporter;
 
@@ -311,7 +325,8 @@ my $joint = chr( 0 ) . "A" . chr( 1 );
 
 sub eq_or_diff {
     my ( @vals, $name, $options );
-    ( $vals[0], $vals[1], $name, $options ) = @_;
+    $options = pop if @_ > 2 && ref $_[-1];
+    ( $vals[0], $vals[1], $name ) = @_;
 
     my $data_type;
     $data_type = $options->{data_type} if $options;
@@ -350,7 +365,17 @@ sub eq_or_diff {
 
     my $diff;
     unless ( $passed ) {
-        my $context = $dump_it ? 2^31 : grep( @$_ > 25, @vals ) ? 3 : 25;
+        my $context;
+
+        $context = $options->{context}
+            if exists $options->{context};
+
+        $context = $dump_it ? 2**31 : grep( @$_ > 25, @vals ) ? 3 : 25
+            unless defined $context;
+
+        confess "context must be an integer: '$context'\n"
+            unless $context =~ /\A\d+\z/;
+
         $diff = diff @vals, {
             CONTEXT     => $context,
             STYLE       => "Table",
