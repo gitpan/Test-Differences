@@ -12,4 +12,6 @@ sub { eq_or_diff "a\nb\nc\nd\ne\n", "a\nc\ne\n" },
 
 plan tests => scalar @tests, todo => [2,3,4,5] ;
 
+print "# This test misuses TODO: these TODOs are actually real tests.\n";
+
 $_->() for @tests ;

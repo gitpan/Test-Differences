@@ -29,18 +29,45 @@ Test::Differences - Test strings and data structures and show differences if not
 
 When the code you're testing returns multiple lines or records and they're just
 plain wrong, sometimes an equivalent to the Unix C<diff> utility is just what's
-needed.
+needed.  Here's output from an example test script that checks two text
+documents and then two (trivial) data structures:
+
+    t/99example....1..3
+    not ok 1 - differences in text
+    #     Failed test ((eval 2) at line 14)
+    #     +---+----------------+---+----------------+
+    #     | Ln|Got             | Ln|Expected        |
+    #     +---+----------------+---+----------------+
+    #     |  1|this is line 1  |  1|this is line 1  |
+    #     *  2|this is line 2  *  2|this is line b  *
+    #     |  3|this is line 3  |  3|this is line 3  |
+    #     +---+----------------+---+----------------+
+    not ok 2 - differences in whitespace
+    #     Failed test ((eval 2) at line 20)
+    #     +---+------------------+---+------------------+
+    #     | Ln|Got               | Ln|Expected          |
+    #     +---+------------------+---+------------------+
+    #     |  1|        indented  |  1|        indented  |
+    #     *  2|        indented  *  2|\tindented        *
+    #     |  3|        indented  |  3|        indented  |
+    #     +---+------------------+---+------------------+
+    not ok 3
+    #     Failed test ((eval 2) at line 22)
+    #     +----+-------------------------------------+----+----------------------------+
+    #     | Elt|Got                                  | Elt|Expected                    |
+    #     +----+-------------------------------------+----+----------------------------+
+    #     *   0|bless( [                             *   0|[                           *
+    #     *   1|  'Move along, nothing to see here'  *   1|  'Dry, humorless message'  *
+    #     *   2|], 'Test::Builder' )                 *   2|]                           *
+    #     +----+-------------------------------------+----+----------------------------+
+    # Looks like you failed 3 tests of 3.
+
 
 eq_or_diff_...() compares two strings or (limited) data structures and either
-emits an ok indication (if they are equal) or calls a side-by-side diff (if
-they differ) like:
-
-    not ok 10
-    # +-----+----------+
-    # | Got | Expected |
-    # +-----+----------+
-    # > a   * b        <
-    # +-----+----------+
+emits an ok indication or a side-by-side diff.  Test::Differences is designed
+to be used with Test.pm and with Test::Simple, Test::More, and other
+Test::Builder based testing modules.  As the SYNOPSIS shows, another testing
+module must be used as the basis for your test suite.
 
 These functions assume that you are presenting it with "flat" records, looking
 like:
@@ -59,14 +86,6 @@ dangerous, as some version of perl shipped with Data::Dumpers that could do the
 oddest things with some input.  This will be changed to an internal dumper with
 good backward compatability when this bites somebody or I get some free time.
 
-All nonprintable characters (including "\n" or "\r\n") are converted to an
-escape code of some sort, since nonprinting characters can make identical
-looking strings different.  This is especially true when comparing things on
-platforms like Win32 where "\n" and "\r\n" usually look identical when C<perl>
-prints them, and a text file missing "\n" on the last line can ruin your whole
-day and make you go blind.  This can be a bit ugly, but, hey, these are failing
-tests were talking about here, not hand-set epic poems.
-
 C<eq_or_diff()> starts counting records at 0 unless you pass it two text
 strings:
 
@@ -78,6 +97,61 @@ If you want to force a first record number of 0, use C<eq_or_diff_data>.  If
 you want to force a first record number of 1, use C<eq_or_diff_text>.  I chose
 this over passing in an options hash because it's clearer and simpler this way.
 YMMV.
+
+=head1 Deploying Test::Differences
+
+There are three basic ways of deploying Test::Differences requiring more or less
+labor by you or your users.
+
+=over
+
+=item *
+
+eval "use Differences";
+
+This is the easiest option.
+
+If you want to detect the presence of Test::Differences on the fly, something
+like the following code might do the trick for you:
+
+    use Test;
+
+    eval "use Test::Differences";
+
+    sub my_ok {
+        goto &eq_or_diff if defined &eq_or_diff;
+        goto &ok;
+    }
+
+    plan tests => 1;
+
+    my_ok "a", "b";
+
+=item *
+
+PREREQ_PM => { .... "Test::Differences" => 0, ... }
+
+This method will let CPAN and CPANPLUS users download it automatically.  It
+will discomfit those users who choose/have to download all packages manually.
+
+=item *
+
+t/lib/Test/Differences.pm, t/lib/Text/Diff.pm, ...
+
+By placing Test::Differences and it's prerequisites in the t/lib directory, you
+avoid forcing your users to download the Test::Differences manually if they
+aren't using CPAN or CPANPLUS.
+
+If you put a C<use lib "t/lib";> in the top of each test suite before the
+C<use Test::Differences;>, C<make test> should work well.
+
+You might want to check once in a while for new Test::Differences releases
+if you do this.
+
+
+
+=back
+
 
 =head1 LIMITATIONS
 
@@ -97,9 +171,18 @@ Exports all 3 functions by default (and by design).  Use
 
 to suppress this behavior if you don't like the namespace pollution.
 
+This module will not override functions like ok(), is(), is_deeply(), etc.  If
+it did, then you could C<eval "use Test::Differences qw( is_deeply );"> to get
+automatic upgrading to diffing behaviors without the C<sub my_ok> shown above.
+Test::Differences intentionally does not provide this behavior because this
+would mean that Test::Differences would need to emulate every popular test
+module out there, which would require far more coding and maintenance that I'm
+willing to do.  Use the eval and my_ok deployment shown above if you want some
+level of automation.
+
 =cut
 
-$VERSION = 0.3;
+$VERSION = 0.4;
 
 use Exporter;
 
@@ -143,32 +226,12 @@ sub _grok_type {
 }
 
 
-my %escapes = map {
-    ( eval qq{"$_"} => $_ )
-} (
-    map( sprintf( "\\x%02x", $_ ), ( 0, 27..31, 128..255 ) ),
-    ("\\cA".."\\cZ"),
-    "\\t", "\\n", "\\r", "\\f", "\\b", "\\a", "\\e"
-) ;
-
-sub _escape($) {
-    my $s = shift ;
-    $s =~ s{([^\040-\177])}{
-	exists $escapes{$1}
-	    ? $escapes{$1}
-	    : sprintf( "\\x{%04x}", ord $1 ) ;
-    }ge;
-
-    $s;
-}
-
-
 ## Flatten any acceptable data structure in to an array of lines.
 sub _flatten {
     my $type = shift;
     local $_ = shift if @_;
 
-    return [ map _escape $_, split /^/m ] unless ref;
+    return [ split /^/m ] unless ref;
 
     croak "Can't flatten $_" unless $type ;
 
@@ -204,38 +267,6 @@ sub _flatten {
             for ( @$rec ) {
                 $_ = "<undef>" unless defined;
             }
-        }
-        
-        ## Get widths of each column.
-        my @widths;
-        my @ljusts;
-        ## TODO: count decimal places for floats
-        for my $rec ( @recs ) {
-            for my $i ( 0..$#$rec ) {
-                for ( $rec->[$i] ) {
-                    $widths[$i] = length
-                        if ! defined $widths[$i]
-                        || length > $widths[$i];
-                    $ljusts[$i] = 1
-                        unless /^\d+/;
-                    _escape $_;
-                }
-            }
-        }
-
-        my @fmts;
-        for my $i ( 0..$#widths ) {
-            push @fmts, join "",
-                "%",
-                $ljusts[$i] ? "-" : "",
-                $widths[$i],
-                "s";
-        }
-
-        for my $rec ( @recs ) {
-            for my $i ( 0..$#$rec ) {
-                $rec->[$i] = sprintf $fmts[$i], $rec->[$i];
-            }
             $rec = join ",", @$rec;
         }
     }
@@ -244,7 +275,9 @@ sub _flatten {
 }
 
 
-sub _id_callers_test_package_of_choice {
+sub _identify_callers_s_test_package_of_choice {
+    ## This is called at each test in case Test::Differences was used before
+    ## the base testing modules.
     ## First see if %INC tells us much of interest.
     my $has_builder_pm = grep $_ eq "Test/Builder.pm", keys %INC;
     my $has_test_pm    = grep $_ eq "Test.pm",         keys %INC;
@@ -256,8 +289,7 @@ sub _id_callers_test_package_of_choice {
         ## TODO: Look in caller's namespace for hints.  For now, assume Builder.
         ## This should only ever be an issue if multiple test suites end
         ## up in memory at once.
-        return "Builder";
-        
+        return "Test::Builder";
     }
 }
 
@@ -278,9 +310,11 @@ sub eq_or_diff {
 
     my @widths;
 
-    my @types = map _grok_type, @_[0,1];
+    my @types = map _grok_type, @vals;
 
-    if ( !$types[0] && !$types[1] ) {
+    my $dump_it = !$types[0] || !$types[1];
+
+    if ( $dump_it ) {
 	require Data::Dumper;
 	local $Data::Dumper::Indent    = 1;
 	local $Data::Dumper::SortKeys  = 1;
@@ -288,14 +322,9 @@ sub eq_or_diff {
 	local $Data::Dumper::Terse     = 1;
 	local $Data::Dumper::DeepCopy  = 1;
 	local $Data::Dumper::QuoteKeys = 0;
-        @vals = map {
-	    return [
-	        map {
-		    chomp;
-		    _escape $_;
-		} split /^/, Data::Dumper::Dumper( $_ )
-	    ] ;
-	} @vals;
+        @vals = map 
+	    [ split /^/, Data::Dumper::Dumper( $_ ) ],
+	    @vals;
     }
     else {
 	@vals = (
@@ -310,19 +339,21 @@ sub eq_or_diff {
 
     my $diff;
     unless ( $passed ) {
-        my $context = grep( @$_ > 25, @vals ) ? 3 : 25;
+        my $context = $dump_it ? 2^31 : grep( @$_ > 25, @vals ) ? 3 : 25;
         $diff = diff @vals, {
-            CONTEXT => $context,
-            STYLE   => Test::Differences::SideBySide->new(
-                LOCATORS => $context < 25,
-                OFFSET   => $data_type eq "text" ? 1 : 0,
-            ),
+            CONTEXT     => $context,
+            STYLE       => "Table",
+	    FILENAME_A  => "Got",
+	    FILENAME_B  => "Expected",
+            OFFSET_A    => $data_type eq "text" ? 1 : 0,
+            OFFSET_B    => $data_type eq "text" ? 1 : 0,
+            INDEX_LABEL => $data_type eq "text" ? "Ln" : "Elt",
         };
         chomp $diff;
         $diff .= "\n";
     }
 
-    my $which = _id_callers_test_package_of_choice;
+    my $which = _identify_callers_s_test_package_of_choice;
 
     if ( $which eq "Test" ) {
         @_ = $passed 
@@ -355,99 +386,11 @@ sub eq_or_diff {
 }
 
 
-package Test::Differences::SideBySide;
+=head1 LIMITATIONS
 
-use vars qw( @ISA );
-
-@ISA = qw( Text::Diff::Base );
-
-sub new {
-    my $proto = shift;
-    return bless { @_ }, $proto
-}
-
-## Old Text::Diffs doesn't export this
-sub OPCODE();
-*OPCODE = \&Text::Diff::OPCODE;
-
-sub hunk {
-    my $self = shift;
-    pop; # Ignore options
-    my $ops = pop;  ## Leave sequences in @_[0,1]
-
-    ## Line numbers are one off, gotta bump them
-    push @{$self->{LINES}}, [
-        map( $_ + $self->{OFFSET}, @{$ops->[0]}[0,1]), "@"
-    ];
-
-    my ( @A, @B );
-    for ( @$ops ) {
-        my $opcode = $_->[OPCODE];
-        if ( $opcode eq " " ) {
-            push @A, undef while @A < @B;
-            push @B, undef while @B < @A;
-        }
-        if ( $opcode eq " " || $opcode eq "-" ) {
-            push @A, $_[0]->[$_->[0]];
-        }
-        if ( $opcode eq " " || $opcode eq "+" ) {
-            push @B, $_[1]->[$_->[1]];
-        }
-    }
-
-    push @A, "" while @A < @B;
-    push @B, "" while @B < @A;
-    for ( 0..$#A ) {
-        my ( $A, $B ) = (shift @A, shift @B );
-        push @{$self->{LINES}},
-            [ $A, $B, 
-                ! defined $A ? "-" :
-                ! defined $B ? "+" :
-                $A eq $B ? " " : "X"
-            ];
-    }
-}
-
-
-sub file_footer {
-    my $self = shift;
-
-    my $a_width = length "Got";
-    my $b_width = length "Expected";
-    for ( @{$self->{LINES}} ) {
-        $a_width = length $_->[0]
-            if defined $_->[0] && length $_->[0] > $a_width;
-        $b_width = length $_->[1]
-            if defined $_->[1] && length $_->[1] > $b_width;
-    }
-
-    my %fmts = (
-        " " => "| %-${a_width}s | %-${b_width}s |\n",
-        "@" => "@%-${a_width}d  @%-${b_width}d  @\n",
-        "X" => "> %-${a_width}s * %-${b_width}s <\n",
-        "-" => "> %-${a_width}s *" . ( "x" x ( $b_width + 2 ) ) . "<\n",
-        "+" => ">" . ( "x" x ( $a_width + 2 ) ) . "* %-${b_width}s <\n",
-    );
-
-    my $bar     = join "",
-        "+",
-        ( "-" x  ( $a_width + 2 ) ),
-        "+",
-        ( "-" x  ( $b_width + 2 ) ),
-        "+\n";
-
-    return join( "",
-        $bar,
-        sprintf( $fmts{" "}, "Got", "Expected" ),
-        $bar,
-        map(
-            sprintf( $fmts{$_->[2]}, @$_[0,1] ),
-            grep $self->{LOCATORS} || $_->[2] ne "@",
-            @{$self->{LINES}}
-        ),
-        $bar
-    );
-}
+Perls before 5.6.0 don't support characters > 255 at all, and 5.6.0 seems
+broken.  This means that you might get odd results using perl5.6.0 with unicode
+strings.
 
 =head1 AUTHOR
 
