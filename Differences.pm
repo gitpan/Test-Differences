@@ -181,7 +181,7 @@ level of automation.
 
 =cut
 
-$VERSION = 0.41;
+$VERSION = 0.42;
 
 use Exporter;
 
@@ -274,7 +274,7 @@ sub _flatten {
 }
 
 
-sub _identify_callers_s_test_package_of_choice {
+sub _identify_callers_test_package_of_choice {
     ## This is called at each test in case Test::Differences was used before
     ## the base testing modules.
     ## First see if %INC tells us much of interest.
@@ -297,6 +297,12 @@ my $warned_of_unknown_test_lib;
 
 sub eq_or_diff_text { $_[3] = { data_type => "text" }; goto &eq_or_diff; }
 sub eq_or_diff_data { $_[3] = { data_type => "data" }; goto &eq_or_diff; }
+
+## This string is a cheat: it's used to see if the two arrays of values
+## are identical.  The stringified values are joined using this joint
+## and compared using eq.  This is a deep equality comparison for
+## references and a shallow one for scalars.
+my $joint = chr( 0 ) . "A" . chr( 1 );
 
 sub eq_or_diff {
     my ( @vals, $name, $options );
@@ -334,7 +340,8 @@ sub eq_or_diff {
 
     my $caller = caller;
 
-    my $passed = join( "", @{$vals[0]} ) eq join( "URK", @{$vals[1]} );
+    my $passed = join( $joint, @{$vals[0]} ) eq
+                 join( $joint, @{$vals[1]} );
 
     my $diff;
     unless ( $passed ) {
@@ -352,7 +359,7 @@ sub eq_or_diff {
         $diff .= "\n";
     }
 
-    my $which = _identify_callers_s_test_package_of_choice;
+    my $which = _identify_callers_test_package_of_choice;
 
     if ( $which eq "Test" ) {
         @_ = $passed 

@@ -1,5 +1,12 @@
 Changes file for Test::Differences
 
+0.42 Wed Jan  2 21:31:32 EST 2002
+    - T.J. Mather spotted a bug where two identical results would compare
+    as different, causing false negatives.
+
+0.41
+    - forgot to log this change.
+
 0.4 Fri Dec 21 08:55:13 EST 2001
     - Moved table style diffs and escaping in to Test::Diff
     - Improve docs
