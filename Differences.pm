@@ -181,7 +181,7 @@ level of automation.
 
 =cut
 
-$VERSION = 0.43;
+$VERSION = 0.44;
 
 use Exporter;
 
@@ -394,9 +394,49 @@ sub eq_or_diff {
 
 =head1 LIMITATIONS
 
-Perls before 5.6.0 don't support characters > 255 at all, and 5.6.0 seems
-broken.  This means that you might get odd results using perl5.6.0 with unicode
-strings.
+Perls before 5.6.0 don't support characters > 255 at all, and 5.6.0
+seems broken.  This means that you might get odd results using perl5.6.0
+with unicode strings.
+
+Relies on Data::Dumper (for now), which, prior to perl5.8, will not
+always report hashes in the same order.  C< $Data::Dumper::SortKeys >
+I<is> set to 1, so on more recent versions of Data::Dumper, this should
+not occur.  Check CPAN to see if it's been peeled out of the main perl
+distribution and backported.  Reported by Ilya Martynov
+<ilya@martynov.org>, although the SortKeys "future perfect" workaround
+has been set in anticipation of a new Data::Dumper for a while.  Note
+that the two hashes should report the same here:
+
+    not ok 5
+    #     Failed test (t/ctrl/05-home.t at line 51)
+    # +----+------------------------+----+------------------------+   
+    # | Elt|Got                     | Elt|Expected                |   
+    # +----+------------------------+----+------------------------+   
+    # |   0|{                       |   0|{                       |   
+    # |   1|  'password' => '',     |   1|  'password' => '',     |   
+    # *   2|  'method' => 'login',  *    |                        |   
+    # |   3|  'ctrl' => 'home',     |   2|  'ctrl' => 'home',     |   
+    # |    |                        *   3|  'method' => 'login',  *   
+    # |   4|  'email' => 'test'     |   4|  'email' => 'test'     |   
+    # |   5|}                       |   5|}                       |   
+    # +----+------------------------+----+------------------------+   
+
+Data::Dumper also overlooks the difference between
+
+    $a[0] = \$a[1];
+    $a[1] = \$a[0];   # $a[0] = \$a[1]
+
+and
+
+    $x = \$y;
+    $y = \$x;
+    @a = ( $x, $y );  # $a[0] = \$y, not \$a[1]
+
+The former involves two scalars, the latter 4: $x, $y, and @a[0,1].
+This was carefully explained to me in words of two syllables or less by
+Yves Orton <demerphq@hotmail.com>.  The plan to address this is to allow
+you to select Data::Denter or some other module of your choice as an
+option.
 
 =head1 AUTHOR
 

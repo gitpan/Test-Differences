@@ -1,5 +1,9 @@
 Changes file for Test::Differences
 
+0.44 Mon Jul  8 17:02:11 EDT 2002
+    - Document Data::Dumper shortcomings reported by Yves Orton
+    <demerphq@hotmail.com> and Ilya Martynov <ilya@martynov.org>.
+
 0.43 Mon May 13 09:49:50 EDT 2002
     - Dump "unknown" structures instead of treating them like
       arrays of scalars.  Reported by Yves Orton <demerphq@hotmail.com>.
