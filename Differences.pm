@@ -32,36 +32,35 @@ plain wrong, sometimes an equivalent to the Unix C<diff> utility is just what's
 needed.  Here's output from an example test script that checks two text
 documents and then two (trivial) data structures:
 
-    t/99example....1..3
-    not ok 1 - differences in text
-    #     Failed test ((eval 2) at line 14)
-    #     +---+----------------+---+----------------+
-    #     | Ln|Got             | Ln|Expected        |
-    #     +---+----------------+---+----------------+
-    #     |  1|this is line 1  |  1|this is line 1  |
-    #     *  2|this is line 2  *  2|this is line b  *
-    #     |  3|this is line 3  |  3|this is line 3  |
-    #     +---+----------------+---+----------------+
-    not ok 2 - differences in whitespace
-    #     Failed test ((eval 2) at line 20)
-    #     +---+------------------+---+------------------+
-    #     | Ln|Got               | Ln|Expected          |
-    #     +---+------------------+---+------------------+
-    #     |  1|        indented  |  1|        indented  |
-    #     *  2|        indented  *  2|\tindented        *
-    #     |  3|        indented  |  3|        indented  |
-    #     +---+------------------+---+------------------+
-    not ok 3
-    #     Failed test ((eval 2) at line 22)
-    #     +----+-------------------------------------+----+----------------------------+
-    #     | Elt|Got                                  | Elt|Expected                    |
-    #     +----+-------------------------------------+----+----------------------------+
-    #     *   0|bless( [                             *   0|[                           *
-    #     *   1|  'Move along, nothing to see here'  *   1|  'Dry, humorless message'  *
-    #     *   2|], 'Test::Builder' )                 *   2|]                           *
-    #     +----+-------------------------------------+----+----------------------------+
-    # Looks like you failed 3 tests of 3.
-
+ t/99example....1..3
+ not ok 1 - differences in text
+ #     Failed test ((eval 2) at line 14)
+ #     +---+----------------+----------------+
+ #     | Ln|Got             |Expected        |
+ #     +---+----------------+----------------+
+ #     |  1|this is line 1  |this is line 1  |
+ #     *  2|this is line 2  |this is line b  *
+ #     |  3|this is line 3  |this is line 3  |
+ #     +---+----------------+----------------+
+ not ok 2 - differences in whitespace
+ #     Failed test ((eval 2) at line 20)
+ #     +---+------------------+------------------+
+ #     | Ln|Got               |Expected          |
+ #     +---+------------------+------------------+
+ #     |  1|        indented  |        indented  |
+ #     *  2|        indented  |\tindented        *
+ #     |  3|        indented  |        indented  |
+ #     +---+------------------+------------------+
+ not ok 3
+ #     Failed test ((eval 2) at line 22)
+ #     +----+-------------------------------------+----------------------------+
+ #     | Elt|Got                                  |Expected                    |
+ #     +----+-------------------------------------+----------------------------+
+ #     *   0|bless( [                             |[                           *
+ #     *   1|  'Move along, nothing to see here'  |  'Dry, humorless message'  *
+ #     *   2|], 'Test::Builder' )                 |]                           *
+ #     +----+-------------------------------------+----------------------------+
+ # Looks like you failed 3 tests of 3.
 
 eq_or_diff_...() compares two strings or (limited) data structures and either
 emits an ok indication or a side-by-side diff.  Test::Differences is designed
@@ -182,7 +181,7 @@ level of automation.
 
 =cut
 
-$VERSION = 0.4;
+$VERSION = 0.41;
 
 use Exporter;
 
