@@ -1,0 +1,7 @@
+Differences.pm
+MANIFEST
+Makefile.PL
+t/00flatten.t
+t/01text_vs_data.t
+t/10test.t
+t/20test_more.t
