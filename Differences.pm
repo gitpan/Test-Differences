@@ -181,7 +181,7 @@ level of automation.
 
 =cut
 
-$VERSION = 0.42;
+$VERSION = 0.43;
 
 use Exporter;
 
@@ -204,7 +204,7 @@ sub _isnt_HASH_of_scalars {
     return scalar grep ref, keys %$_;
 }
 
-use constant ARRAY_of_scalars => "ARRAY of scalars";
+use constant ARRAY_of_scalars           => "ARRAY of scalars";
 use constant ARRAY_of_ARRAYs_of_scalars => "ARRAY of ARRAYs of scalars";
 use constant ARRAY_of_HASHes_of_scalars => "ARRAY of HASHes of scalars";
 
@@ -220,7 +220,7 @@ sub _grok_type {
             unless grep _isnt_ARRAY_of_scalars, @$_;
         return ARRAY_of_HASHes_of_scalars
             unless grep _isnt_HASH_of_scalars, @$_;
-        return "unknown";
+        return 0;
     }
 }
 

@@ -1,5 +1,9 @@
 Changes file for Test::Differences
 
+0.43 Mon May 13 09:49:50 EDT 2002
+    - Dump "unknown" structures instead of treating them like
+      arrays of scalars.  Reported by Yves Orton <demerphq@hotmail.com>.
+
 0.42 Wed Jan  2 21:31:32 EST 2002
     - T.J. Mather spotted a bug where two identical results would compare
     as different, causing false negatives.
