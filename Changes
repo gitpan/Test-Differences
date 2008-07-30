@@ -1,5 +1,10 @@
 Changes file for Test::Differences
 
+0.48_01 Wed Jul 30 10:42:52 GMT 2008
+    - Fixed bug when comparing AoH with non-scalar values.  Reported (with
+      fix) by Mark Zealey
+      (http://rt.cpan.org/Public/Bug/Display.html?id=29732)
+
 0.47 Tue Jun 17 08:54:59 EDT 2003
     - Add context option (reworked patch from fetko@slaysys.com)
     - Improve options handling for eq_or_diff(), $name is no longer

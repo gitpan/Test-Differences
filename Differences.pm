@@ -200,7 +200,7 @@ level of automation.
 
 =cut
 
-$VERSION = 0.47;
+$VERSION = 0.48_01;
 
 use Exporter;
 
@@ -220,7 +220,7 @@ sub _isnt_ARRAY_of_scalars {
 
 sub _isnt_HASH_of_scalars {
     return 1 if ref ne "HASH";
-    return scalar grep ref, keys %$_;
+    return scalar grep ref, values %$_;
 }
 
 use constant ARRAY_of_scalars           => "ARRAY of scalars";
