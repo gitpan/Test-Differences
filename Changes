@@ -1,5 +1,14 @@
 Changes file for Test::Differences
 
+0.49_01 Fri Aug  1 09:04:58 GMT 2008
+    - Convert to modern Perl distribution.
+    - Applied doc suggestion from Slaven Rezic
+      (http://rt.cpan.org/Ticket/Display.html?id=24297)
+    - Bumped up version number higher than normal because I forgot to quote
+      the "developer release" number last time.
+    - Applied Mark Stosberg's  patch which fixed the { a => 1 } versus 
+      { a => '1' } bug (http://rt.cpan.org/Ticket/Display.html?id=3029)
+
 0.48_01 Wed Jul 30 10:42:52 GMT 2008
     - Fixed bug when comparing AoH with non-scalar values.  Reported (with
       fix) by Mark Zealey

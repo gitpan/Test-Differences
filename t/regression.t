@@ -1,24 +1,25 @@
+#!/usr/bin/perl -w
 
-use Test;
+use strict;
 
+use Test::More;
 use Test::Differences;
 
-my $got = [
-    { a => 1 },
-    {   b => 1,
-        c => [],
-    }
-];
-my $expected = [
-    { a => 1 },
-    {   b => 1,
-        c => [],
-    }
-];
-
-my @tests = (
-    sub { eq_or_diff $got, $expected },
+my %cases = (
+    'AoH with non-scalar values' => {
+        got      => [ { a => 1 }, { b => 1, c => [] } ],
+        expected => [ { a => 1 }, { b => 1, c => [] } ]
+    },
+    'Numbers and strings' => {
+        got      => { order_id => 127   },
+        expected => { order_id => '127' },
+    },
 );
+
+my @tests;
+while ( my ( $name, $test ) = each %cases ) {
+    push @tests => sub { eq_or_diff $test->{got}, $test->{expected}, $name };
+}
 
 plan tests => scalar @tests;
 

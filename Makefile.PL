@@ -1,19 +1,17 @@
+use strict;
+use warnings;
 use ExtUtils::MakeMaker;
 
 WriteMakefile(
-    NAME          => "Test::Differences",
-    VERSION_FROM  => "Differences.pm",
-    PREREQ_PM     => {
-        "Text::Diff" => 0.34,
+    NAME                => 'Test::Differences',
+    AUTHOR              => 'Curtis "Ovid" Poe <ovid@cpan.org>',
+    VERSION_FROM        => 'lib/Test/Differences.pm',
+    ABSTRACT_FROM       => 'lib/Test/Differences.pm',
+    PL_FILES            => {},
+    PREREQ_PM => {
+        'Test::More' => 0,
+        'Text::Diff' => 0.35,
     },
+    dist                => { COMPRESS => 'gzip -9f', SUFFIX => 'gz', },
+    clean               => { FILES => 'Test-Differences-*' },
 );
-
-
-sub MY::libscan {
-   package MY ;
-   my $self = shift ;
-   my ( $path ) = @_ ;
-   return '' if /\.sw[a-z]$/ ;
-   return '' unless length $self->SUPER::libscan( $path ) ;
-   return $path ;
-}

@@ -1,9 +1,9 @@
 Changes
-Differences.pm
-MANIFEST
-MANIFEST.SKIP
+lib/Test/Differences.pm
 Makefile.PL
-eg/to_diff_or_not_to_diff
+MANIFEST
+README
+t/00-load.t
 t/00flatten.t
 t/01text_vs_data.t
 t/02pass.t
@@ -11,4 +11,8 @@ t/03struct.t
 t/10test.t
 t/20test_more.t
 t/99example.t
+t/boilerplate.t
+t/pod-coverage.t
+t/pod.t
 t/regression.t
+META.yml                                 Module meta-data (added by MakeMaker)
