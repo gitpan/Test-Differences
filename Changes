@@ -1,5 +1,11 @@
 Changes file for Test::Differences
 
+0.49_02 Sat Aug  2 13:00:21 GMT 2008
+    - Added support for all diff styles supplied by Text::Diff.  Requested by
+      Kevin Jones (http://rt.cpan.org/Public/Bug/Display.html?id=23579)
+    - Add Build.PL.
+    - Convert to universally use Test::More instead of Test.
+
 0.49_01 Fri Aug  1 09:04:58 GMT 2008
     - Convert to modern Perl distribution.
     - Applied doc suggestion from Slaven Rezic

@@ -1,3 +1,4 @@
+Build.PL
 Changes
 lib/Test/Differences.pm
 Makefile.PL
@@ -9,8 +10,8 @@ t/01text_vs_data.t
 t/02pass.t
 t/03struct.t
 t/10test.t
-t/20test_more.t
 t/99example.t
+t/diff_styles.t
 t/boilerplate.t
 t/pod-coverage.t
 t/pod.t

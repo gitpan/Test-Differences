@@ -2,6 +2,12 @@ use strict;
 use warnings;
 use ExtUtils::MakeMaker;
 
+eval "use 5.006";
+if (my $error = $@) {
+    warn $error;
+    exit 0;
+}
+
 WriteMakefile(
     NAME                => 'Test::Differences',
     AUTHOR              => 'Curtis "Ovid" Poe <ovid@cpan.org>',

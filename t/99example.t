@@ -38,4 +38,4 @@ TEST
     skip $x, "" ;
 FALLBACK
 
-die $@ if $@ ;
+die $@ if $@;

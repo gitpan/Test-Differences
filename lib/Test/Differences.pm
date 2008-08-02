@@ -30,7 +30,11 @@ Test::Differences - Test strings and data structures and show differences if not
 
 =head1 EXPORT
 
-This module exports three functions:
+This module exports three test functions and four diff-style functions:
+
+=over 4
+
+=item * Test functions
 
 =over 4
 
@@ -39,6 +43,22 @@ This module exports three functions:
 =item * C<eq_or_diff_data>
 
 =item * C<eq_or_diff_text>
+
+=back
+
+=item * Diff style functions
+
+=over 4
+
+=item * C<table_diff> (the default)
+
+=item * C<unified_diff>
+
+=item * C<oldstyle_diff>
+
+=item * C<context_diff>
+
+=back
 
 =back
 
@@ -122,13 +142,57 @@ YMMV.
 There is currently only one option: "context".  This allows you to
 control the amount of context shown:
 
-   eq_or_diff $got, $expected, $name, { context => 50000};
+   eq_or_diff $got, $expected, $name, { context => 50000 };
 
 will show you lots and lots of context.  Normally, eq_or_diff() uses
 some heuristics to determine whether to show 3 lines of context (like
-a normal unified diff) or 25 lines (for 
+a normal unified diff) or 25 lines.
 
-=head1 Deploying Test::Differences
+=head1 DIFF STYLES
+
+For extremely long strings, a table diff can wrap on your screen and be hard
+to read.  If you are comfortable with different diff formats, you can switch
+to a format more suitable for your data.  These are the four formats supported
+by the L<Text::Diff> module and are set with the following functions:
+
+=over 4
+
+=item * C<table_diff> (the default)
+
+=item * C<unified_diff>
+
+=item * C<oldstyle_diff>
+
+=item * C<context_diff>
+
+=back
+
+You can run the following to understand the different diff output styles:
+
+ use Test::More 'no_plan';
+ use Test::Differences;
+ 
+ my $long_string = join '' => 1..40;
+ 
+ TODO: {
+     local $TODO = 'Testing diff styles';
+
+     # this is the default and does not need to explicitly set unless you need
+     # to reset it back from another diff type
+     table_diff;
+     eq_or_diff $long_string, "-$long_string", 'table diff';
+
+     unified_diff;
+     eq_or_diff $long_string, "-$long_string", 'unified diff';
+
+     context_diff;
+     eq_or_diff $long_string, "-$long_string", 'context diff';
+
+     oldstyle_diff;
+     eq_or_diff $long_string, "-$long_string", 'oldstyle diff';
+ }
+
+=head1 DEPLOYING 
 
 There are several basic ways of deploying Test::Differences requiring more or less
 labor by you or your users.
@@ -195,42 +259,22 @@ if you do this.
 
 =back
 
-
-=head1 LIMITATIONS
-
-This module "mixes in" with Test.pm or any of the test libraries based on
-Test::Builder (Test::Simple, Test::More, etc).  It does this by 
-peeking to see whether Test.pm or Test/Builder.pm is in %INC, so if you are
-not using one of those, it will print a warning and play dumb by not emitting
-test numbers (or incrementing them).  If you are using one of these, it
-should interoperate nicely.
-
-Uses Data::Dumper for complex data structures (like hashes :), which can lead
-to some problems on older perls.
-
-Exports all 3 functions by default (and by design).  Use
-
-    use Test::Differences ();
-
-to suppress this behavior if you don't like the namespace pollution.
-
-This module will not override functions like ok(), is(), is_deeply(), etc.  If
-it did, then you could C<eval "use Test::Differences qw( is_deeply );"> to get
-automatic upgrading to diffing behaviors without the C<sub my_ok> shown above.
-Test::Differences intentionally does not provide this behavior because this
-would mean that Test::Differences would need to emulate every popular test
-module out there, which would require far more coding and maintenance that I'm
-willing to do.  Use the eval and my_ok deployment shown above if you want some
-level of automation.
-
 =cut
 
-$VERSION = '0.49_01';
+$VERSION = '0.49_02';
 
 use Exporter;
 
 @ISA    = qw( Exporter );
-@EXPORT = qw( eq_or_diff eq_or_diff_text eq_or_diff_data );
+@EXPORT = qw( 
+  eq_or_diff 
+  eq_or_diff_text 
+  eq_or_diff_data
+  unified_diff
+  context_diff
+  oldstyle_diff
+  table_diff
+);
 
 use strict;
 
@@ -251,6 +295,24 @@ use constant ARRAY_of_scalars           => "ARRAY of scalars";
 use constant ARRAY_of_ARRAYs_of_scalars => "ARRAY of ARRAYs of scalars";
 use constant ARRAY_of_HASHes_of_scalars => "ARRAY of HASHes of scalars";
 use constant HASH_of_scalars            => "HASH of scalars";
+
+{
+    my $diff_style = 'Table';
+    my %allowed_style = map { $_ => 1 } qw/Unified Context OldStyle Table/;
+    sub _diff_style {
+        return $diff_style unless @_;
+        my $requested_style = shift;
+        unless ( $allowed_style{$requested_style} ) {
+           Carp::croak("Uknown style ($requested_style) requested for diff");
+        }
+        $diff_style = $requested_style;
+    }
+}
+
+sub unified_diff  { _diff_style('Unified') }
+sub context_diff  { _diff_style('Context') }
+sub oldstyle_diff { _diff_style('OldStyle') }
+sub table_diff    { _diff_style('Table') }
 
 sub _grok_type {
     local $_ = shift if @_;
@@ -416,7 +478,7 @@ sub eq_or_diff {
 
         $diff = diff $got, $expected,
           { CONTEXT     => $context,
-            STYLE       => "Table",
+            STYLE       => _diff_style(),
             FILENAME_A  => "Got",
             FILENAME_B  => "Expected",
             OFFSET_A    => $data_type eq "text" ? 1 : 0,
@@ -462,18 +524,47 @@ sub eq_or_diff {
 
 =head1 LIMITATIONS
 
+=head2 C<Test> or C<Test::More>
+
+This module "mixes in" with Test.pm or any of the test libraries based on
+Test::Builder (Test::Simple, Test::More, etc).  It does this by peeking to see
+whether Test.pm or Test/Builder.pm is in %INC, so if you are not using one of
+those, it will print a warning and play dumb by not emitting test numbers (or
+incrementing them).  If you are using one of these, it should interoperate
+nicely.
+
+=head2 Exporting
+
+Exports all 3 functions by default (and by design).  Use
+
+    use Test::Differences ();
+
+to suppress this behavior if you don't like the namespace pollution.
+
+This module will not override functions like ok(), is(), is_deeply(), etc.  If
+it did, then you could C<eval "use Test::Differences qw( is_deeply );"> to get
+automatic upgrading to diffing behaviors without the C<sub my_ok> shown above.
+Test::Differences intentionally does not provide this behavior because this
+would mean that Test::Differences would need to emulate every popular test
+module out there, which would require far more coding and maintenance that I'm
+willing to do.  Use the eval and my_ok deployment shown above if you want some
+level of automation.
+
+=head2 Unicode
+
 Perls before 5.6.0 don't support characters > 255 at all, and 5.6.0
 seems broken.  This means that you might get odd results using perl5.6.0
 with unicode strings.
 
-Relies on Data::Dumper (for now), which, prior to perl5.8, will not
-always report hashes in the same order.  C< $Data::Dumper::SortKeys >
-I<is> set to 1, so on more recent versions of Data::Dumper, this should
-not occur.  Check CPAN to see if it's been peeled out of the main perl
-distribution and backported.  Reported by Ilya Martynov
-<ilya@martynov.org>, although the SortKeys "future perfect" workaround
-has been set in anticipation of a new Data::Dumper for a while.  Note
-that the two hashes should report the same here:
+=head2 C<Data::Dumper> and older Perls.
+
+Relies on Data::Dumper (for now), which, prior to perl5.8, will not always
+report hashes in the same order.  C< $Data::Dumper::SortKeys > I<is> set to 1,
+so on more recent versions of Data::Dumper, this should not occur.  Check CPAN
+to see if it's been peeled out of the main perl distribution and backported.
+Reported by Ilya Martynov <ilya@martynov.org>, although the SortKeys "future
+perfect" workaround has been set in anticipation of a new Data::Dumper for a
+while.  Note that the two hashes should report the same here:
 
     not ok 5
     #     Failed test (t/ctrl/05-home.t at line 51)
@@ -516,7 +607,7 @@ option.
 
 =head1 LICENSE
 
-Copyright 2001 Barrie Slaymaker, All Rights Reserved.
+Copyright 2001-2008 Barrie Slaymaker, All Rights Reserved.
 
 You may use this software under the terms of the GNU public license, any
 version, or the Artistic license.
