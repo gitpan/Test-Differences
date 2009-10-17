@@ -261,7 +261,8 @@ if you do this.
 
 =cut
 
-$VERSION = '0.49_02';
+our $VERSION = "0.500"; # or "0.001_001" for a dev release
+$VERSION = eval $VERSION;
 
 use Exporter;
 
