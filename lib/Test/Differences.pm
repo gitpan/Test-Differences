@@ -4,6 +4,10 @@ package Test::Differences;
 
 Test::Differences - Test strings and data structures and show differences if not ok
 
+=head1 VERSION
+
+.60
+
 =head1 SYNOPSIS
 
    use Test;    ## Or use Test::More
@@ -20,7 +24,7 @@ Test::Differences - Test strings and data structures and show differences if not
    use DBI;
 
    ... open connection & prepare statement and @expected_... here...
-   
+
    eq_or_diff $sth->fetchall_arrayref, \@expected_arrays  "testing DBI arrays";
    eq_or_diff $sth->fetchall_hashref,  \@expected_hashes, "testing DBI hashes";
 
@@ -139,14 +143,26 @@ YMMV.
 
 =head1 OPTIONS
 
-There is currently only one option: "context".  This allows you to
-control the amount of context shown:
+The options to C<eq_or_diff> give some fine-grained control over the output.
+
+=over 4
+
+=item * C<context>
+
+This allows you to control the amount of context shown:
 
    eq_or_diff $got, $expected, $name, { context => 50000 };
 
 will show you lots and lots of context.  Normally, eq_or_diff() uses
 some heuristics to determine whether to show 3 lines of context (like
 a normal unified diff) or 25 lines.
+
+=item * C<data_type>
+
+C<text> or C<data>. See C<eq_or_diff_text> and C<eq_or_diff_data> to
+understand this. You can usually ignore this.
+
+=back
 
 =head1 DIFF STYLES
 
@@ -171,9 +187,9 @@ You can run the following to understand the different diff output styles:
 
  use Test::More 'no_plan';
  use Test::Differences;
- 
+
  my $long_string = join '' => 1..40;
- 
+
  TODO: {
      local $TODO = 'Testing diff styles';
 
@@ -192,7 +208,7 @@ You can run the following to understand the different diff output styles:
      eq_or_diff $long_string, "-$long_string", 'oldstyle diff';
  }
 
-=head1 DEPLOYING 
+=head1 DEPLOYING
 
 There are several basic ways of deploying Test::Differences requiring more or less
 labor by you or your users.
@@ -261,15 +277,15 @@ if you do this.
 
 =cut
 
-our $VERSION = "0.500"; # or "0.001_001" for a dev release
+our $VERSION = "0.60"; # or "0.001_001" for a dev release
 $VERSION = eval $VERSION;
 
 use Exporter;
 
 @ISA    = qw( Exporter );
-@EXPORT = qw( 
-  eq_or_diff 
-  eq_or_diff_text 
+@EXPORT = qw(
+  eq_or_diff
+  eq_or_diff_text
   eq_or_diff_data
   unified_diff
   context_diff
@@ -340,7 +356,7 @@ sub _flatten {
     my $type = shift;
     local $_ = shift if @_;
 
-    return [ split /^/m ] unless ref;
+    return [ split /^/m, _quote_str($_) ] unless ref;
 
     croak "Can't flatten $_" unless $type;
 
@@ -355,7 +371,10 @@ sub _flatten {
     else {
         die "unsupported ref type";
     }
-    if ( $type eq ARRAY_of_ARRAYs_of_scalars ) {
+    if ( $type eq ARRAY_of_scalars) {
+        @recs = map { _quote_str($_) } @recs;
+    }
+    elsif ( $type eq ARRAY_of_ARRAYs_of_scalars ) {
         ## Also copy the inner arrays if need be
         $_ = [@$_] for @recs;
     }
@@ -382,16 +401,24 @@ sub _flatten {
     }
 
     if ( $type eq ARRAY_of_ARRAYs_of_scalars ) {
-        ## Convert undefs
+        ## Quote strings
         for my $rec (@recs) {
             for (@$rec) {
-                $_ = "<undef>" unless defined;
+                $_ = _quote_str($_);
             }
             $rec = join ",", @$rec;
         }
     }
 
     return \@recs;
+}
+
+sub _quote_str {
+    my $str = shift;
+    return 'undef' unless defined $str;
+    return $str if $str =~ /^[0-9]+$/;
+    $str =~ s{([\\\'])}{\\$1}g;
+    return "'$str'";
 }
 
 sub _identify_callers_test_package_of_choice {
@@ -569,17 +596,17 @@ while.  Note that the two hashes should report the same here:
 
     not ok 5
     #     Failed test (t/ctrl/05-home.t at line 51)
-    # +----+------------------------+----+------------------------+   
-    # | Elt|Got                     | Elt|Expected                |   
-    # +----+------------------------+----+------------------------+   
-    # |   0|{                       |   0|{                       |   
-    # |   1|  'password' => '',     |   1|  'password' => '',     |   
-    # *   2|  'method' => 'login',  *    |                        |   
-    # |   3|  'ctrl' => 'home',     |   2|  'ctrl' => 'home',     |   
-    # |    |                        *   3|  'method' => 'login',  *   
-    # |   4|  'email' => 'test'     |   4|  'email' => 'test'     |   
-    # |   5|}                       |   5|}                       |   
-    # +----+------------------------+----+------------------------+   
+    # +----+------------------------+----+------------------------+
+    # | Elt|Got                     | Elt|Expected                |
+    # +----+------------------------+----+------------------------+
+    # |   0|{                       |   0|{                       |
+    # |   1|  'password' => '',     |   1|  'password' => '',     |
+    # *   2|  'method' => 'login',  *    |                        |
+    # |   3|  'ctrl' => 'home',     |   2|  'ctrl' => 'home',     |
+    # |    |                        *   3|  'method' => 'login',  *
+    # |   4|  'email' => 'test'     |   4|  'email' => 'test'     |
+    # |   5|}                       |   5|}                       |
+    # +----+------------------------+----+------------------------+
 
 Data::Dumper also overlooks the difference between
 
