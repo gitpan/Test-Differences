@@ -1,12 +1,14 @@
 package Test::Differences;
 
+=encoding utf8
+
 =head1 NAME
 
 Test::Differences - Test strings and data structures and show differences if not ok
 
 =head1 VERSION
 
-0.61
+0.61_01
 
 =head1 SYNOPSIS
 
@@ -168,6 +170,10 @@ If passed, whatever value is added is used as the argument for L<Data::Dumper>
 Sortkeys option. See the L<Data::Dumper> docs to understand how you can
 control the Sortkeys behavior.
 
+=item * C<filename_a> and C<filename_b>
+
+The column headers to use in the output. They default to 'Got' and 'Expected'.
+
 =back
 
 =head1 DIFF STYLES
@@ -213,6 +219,70 @@ You can run the following to understand the different diff output styles:
      oldstyle_diff;
      eq_or_diff $long_string, "-$long_string", 'oldstyle diff';
  }
+
+=head1 UNICODE
+
+Generally you'll find that the following test output is disappointing.
+
+    use Test::Differences;
+
+    my $want = { 'Traditional Chinese' => '中國' };
+    my $have = { 'Traditional Chinese' => '中国' };
+
+    eq_or_diff $have, $want, 'Unicode, baby';
+
+The output looks like this:
+
+    #   Failed test 'Unicode, baby'
+    #   at t/unicode.t line 12.
+    # +----+----------------------------+----------------------------+
+    # | Elt|Got                         |Expected                    |
+    # +----+----------------------------+----------------------------+
+    # |   0|'Traditional Chinese'       |'Traditional Chinese'       |
+    # *   1|'\xe4\xb8\xad\xe5\x9b\xbd'  |'\xe4\xb8\xad\xe5\x9c\x8b'  *
+    # +----+----------------------------+----------------------------+
+    # Looks like you failed 1 test of 1.
+    Dubious, test returned 1 (wstat 256, 0x100)
+
+This is generally not helpful and someone points out that you didn't declare
+your test program as being utf8, so you do that:
+
+    use Test::Differences;
+    use utf8;
+
+    my $want = { 'Traditional Chinese' => '中國' };
+    my $have = { 'Traditional Chinese' => '中国' };
+
+    eq_or_diff $have, $want, 'Unicode, baby';
+
+
+Here's what you get:
+
+    #   Failed test 'Unicode, baby'
+    #   at t/unicode.t line 12.
+    # +----+-----------------------+-----------------------+
+    # | Elt|Got                    |Expected               |
+    # +----+-----------------------+-----------------------+
+    # |   0|'Traditional Chinese'  |'Traditional Chinese'  |
+    # *   1|'\x{4e2d}\x{56fd}'     |'\x{4e2d}\x{570b}'     *
+    # +----+-----------------------+-----------------------+
+    # Looks like you failed 1 test of 1.
+    Dubious, test returned 1 (wstat 256, 0x100)
+    Failed 1/1 subtests
+
+That's better, but still awful. However, if you have C<Text::Diff> 0.40 or
+higher installed, you can add this to your code:
+
+    BEGIN { $ENV{DIFF_OUTPUT_UNICODE} = 1 }
+
+Make sure you do this I<before> you load L<Text::Diff>. Then this is the output:
+
+    # +----+-----------------------+-----------------------+
+    # | Elt|Got                    |Expected               |
+    # +----+-----------------------+-----------------------+
+    # |   0|'Traditional Chinese'  |'Traditional Chinese'  |
+    # *   1|'中国'                 |'中國'                 *
+    # +----+-----------------------+-----------------------+
 
 =head1 DEPLOYING
 
@@ -283,7 +353,7 @@ if you do this.
 
 =cut
 
-our $VERSION = "0.61"; # or "0.001_001" for a dev release
+our $VERSION = "0.61_01"; # or "0.001_001" for a dev release
 $VERSION = eval $VERSION;
 
 use Exporter;
@@ -461,10 +531,17 @@ sub eq_or_diff {
     $options = pop if @_ > 2 && ref $_[-1];
     ( $vals[0], $vals[1], $name ) = @_;
 
-    my $data_type;
-    $data_type = $options->{data_type} if $options;
+    my($data_type, $filename_a, $filename_b);
+    if($options) {
+        $data_type  = $options->{data_type};
+        $filename_a = $options->{filename_a};
+        $filename_b = $options->{filename_b};
+    }
     $data_type ||= "text" unless ref $vals[0] || ref $vals[1];
     $data_type ||= "data";
+
+    $filename_a ||= 'Got';
+    $filename_b ||= 'Expected';
 
     my @widths;
 
@@ -514,8 +591,8 @@ sub eq_or_diff {
         $diff = diff $got, $expected,
           { CONTEXT     => $context,
             STYLE       => _diff_style(),
-            FILENAME_A  => "Got",
-            FILENAME_B  => "Expected",
+            FILENAME_A  => $filename_a,
+            FILENAME_B  => $filename_b,
             OFFSET_A    => $data_type eq "text" ? 1 : 0,
             OFFSET_B    => $data_type eq "text" ? 1 : 0,
             INDEX_LABEL => $data_type eq "text" ? "Ln" : "Elt",
@@ -632,13 +709,13 @@ Yves Orton <demerphq@hotmail.com>.  The plan to address this is to allow
 you to select Data::Denter or some other module of your choice as an
 option.
 
-=head1 AUTHOR
+=head1 AUTHORS
 
-    Barrie Slaymaker <barries@slaysys.com>
-
-=head1 MAINTAINER
+    Barrie Slaymaker <barries@slaysys.com> - original author
 
     Curtis "Ovid" Poe <ovid@cpan.org>
+
+    David Cantrell <david@cantrell.org.uk>
 
 =head1 LICENSE
 
